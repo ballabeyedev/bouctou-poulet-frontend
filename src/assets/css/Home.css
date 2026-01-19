@@ -1,0 +1,329 @@
+/* Home.css - Animations et Media Queries */
+
+/* Animations CSS */
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-15px) rotate(5deg); }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Améliorations de base */
+* {
+  box-sizing: border-box;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:focus {
+  outline: 2px solid #2E7D32;
+  outline-offset: 2px;
+}
+
+/* Cacher la barre de défilement pour le carrousel */
+.products-carousel::-webkit-scrollbar {
+  display: none;
+}
+
+/* Styles pour les boutons du carrousel */
+.carousel-button:hover {
+  background: rgba(255, 255, 255, 1) !important;
+  transform: translateY(-50%) scale(1.1) !important;
+}
+
+/* Effets de hover pour les cartes produits */
+.product-card:hover {
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Effets de hover pour les boutons */
+.primary-button:hover,
+.secondary-button:hover,
+.nav-button:hover,
+.product-button:hover,
+.cta-button:hover {
+  transform: translateY(-3px) !important;
+}
+
+.primary-button:hover {
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4) !important;
+}
+
+.secondary-button:hover {
+  background: rgba(255, 255, 255, 0.15) !important;
+  border-color: #fff !important;
+}
+
+.nav-button:hover {
+  box-shadow: 0 10px 25px rgba(251, 192, 45, 0.4) !important;
+}
+
+.product-button:hover {
+  box-shadow: 0 8px 20px rgba(46, 125, 50, 0.3) !important;
+}
+
+.cta-button:hover {
+  box-shadow: 0 12px 30px rgba(251, 192, 45, 0.4) !important;
+}
+
+/* Animation pour le contenu de la hero section */
+.hero-content {
+  animation: fadeInUp 0.8s ease-out;
+}
+
+/* Animation pour les cartes de valeurs */
+.value-card:hover {
+  animation: slideIn 0.3s ease-out;
+}
+
+/* Media Queries pour la responsivité */
+
+/* Tablettes (768px - 1024px) */
+@media (max-width: 1024px) {
+  .hero-buttons {
+    flex-direction: column !important;
+    align-items: center !important;
+  }
+  
+  .about-container {
+    grid-template-columns: 1fr !important;
+    gap: 40px !important;
+  }
+  
+  .contact-grid {
+    grid-template-columns: 1fr !important;
+    gap: 30px !important;
+  }
+  
+  .carousel-button-left,
+  .carousel-button-right {
+    display: none !important;
+  }
+}
+
+/* Mobiles (jusqu'à 767px) */
+@media (max-width: 767px) {
+  .nav-content {
+    padding: 0 15px !important;
+  }
+  
+  .nav-links {
+    display: none !important;
+  }
+  
+  .mobile-menu {
+    display: flex !important;
+  }
+  
+  .hero {
+    padding: 70px 15px 30px !important;
+  }
+  
+  .hero-title {
+    font-size: 1.8rem !important;
+  }
+  
+  .hero-subtitle {
+    font-size: 0.95rem !important;
+    padding: 0 5px !important;
+  }
+  
+  .hero-buttons {
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+  
+  .hero-features {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+  
+  .section {
+    padding: 30px 15px !important;
+  }
+  
+  .section-title {
+    font-size: 1.6rem !important;
+  }
+  
+  .section-subtitle {
+    font-size: 0.9rem !important;
+    padding: 0 5px !important;
+  }
+  
+  .about-container {
+    grid-template-columns: 1fr !important;
+    gap: 25px !important;
+  }
+  
+  .image-wrapper {
+    min-height: 300px !important;
+    padding: 20px !important;
+  }
+  
+  .image-badge {
+    font-size: 2rem !important;
+  }
+  
+  .image-title {
+    font-size: 1.3rem !important;
+  }
+  
+  .image-text {
+    font-size: 0.85rem !important;
+  }
+  
+  .values-grid {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .value-card {
+    padding: 12px !important;
+  }
+  
+  .contact-grid {
+    grid-template-columns: 1fr !important;
+    gap: 15px !important;
+  }
+  
+  .info-card {
+    padding: 12px !important;
+  }
+  
+  .contact-hours {
+    padding: 15px !important;
+  }
+  
+  .footer-container {
+    grid-template-columns: 1fr !important;
+    gap: 25px !important;
+  }
+  
+  .footer-brand {
+    flex-direction: column !important;
+    text-align: center !important;
+    gap: 12px !important;
+  }
+  
+  .footer-logo {
+    margin: 0 auto !important;
+  }
+  
+  .carousel-button-left,
+  .carousel-button-right {
+    display: none !important;
+  }
+}
+
+/* Très petits mobiles (jusqu'à 480px) */
+@media (max-width: 480px) {
+  .hero-title {
+    font-size: 1.6rem !important;
+  }
+  
+  .section-title {
+    font-size: 1.4rem !important;
+  }
+  
+  .product-card {
+    min-width: 250px !important;
+  }
+  
+  .product-image-container {
+    height: 150px !important;
+  }
+  
+  .product-meta {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+  }
+  
+  .price-badge {
+    align-self: flex-end !important;
+  }
+}
+
+/* Amélioration de la lisibilité sur mobile */
+@media (max-width: 767px) {
+  body {
+    font-size: 14px;
+  }
+  
+  h1, h2, h3 {
+    line-height: 1.3;
+  }
+  
+  p {
+    line-height: 1.5;
+  }
+}
+
+/* Ajustements pour les grands écrans */
+@media (min-width: 1400px) {
+  .nav-content,
+  .about-container,
+  .contact-container,
+  .footer-container {
+    max-width: 1400px !important;
+  }
+}
+
+/* Styles d'impression */
+@media print {
+  .navbar,
+  .hero-buttons,
+  .product-button,
+  .cta-button,
+  .footer-bottom {
+    display: none !important;
+  }
+  
+  .hero,
+  .about-section,
+  .section,
+  .contact-section {
+    padding: 20px !important;
+  }
+  
+  .hero {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  
+  .hero-content {
+    color: #000 !important;
+  }
+}

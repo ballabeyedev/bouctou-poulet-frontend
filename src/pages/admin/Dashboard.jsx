@@ -717,7 +717,6 @@ export default function Dashboard() {
 
           {activeMenu === 'Accueil' && (
             <div style={styles.cards}>
-              <StatCard title="Utilisateurs" value="128" icon={<Users size={28} />} />
               <StatCard title="Produits" value={produits.length.toString()} icon={<Package size={28} />} />
               <StatCard title="Commandes" value={commandes.length.toString()} icon={<ShoppingCart size={28} />} />
             </div>

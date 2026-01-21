@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
+import Swal from 'sweetalert2';
 import logo from '../assets/images/logo.jpg';
 import defaultProductImage from '../assets/images/default.png';
 import '../assets/css/Home.css';
@@ -18,7 +19,7 @@ export default function Home() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [quantity, setQuantity] = useState(1);
   const [totalPrice, setTotalPrice] = useState(0);
-  const [modalStep, setModalStep] = useState(1); // 1: produit, 2: quantité, 3: client
+  const [modalStep, setModalStep] = useState(1);
   const [clientInfo, setClientInfo] = useState({
     nomComplet: '',
     telephone: '',
@@ -36,7 +37,7 @@ export default function Home() {
     const fetchProduits = async () => {
       try {
         const response = await fetch(
-          'https://bouctou-poulet-back-mali.onrender.com/bouctou_poulet/client/liste-produit-client'
+          'https://bouctou-poulet-back.onrender.com/bouctou_poulet/client/liste-produit-client'
         );
         
         if (!response.ok) {
@@ -52,11 +53,9 @@ export default function Home() {
         } else if (data.data && Array.isArray(data.data)) {
           setProduits(data.data);
         } else {
-          console.error('Structure de données inattendue:', data);
           setProduits([]);
         }
       } catch (error) {
-        console.error('Erreur chargement produits:', error);
         setProduits([]);
       } finally {
         setLoadingProduits(false);
@@ -69,7 +68,6 @@ export default function Home() {
   useEffect(() => {
     setIsVisible(true);
     
-    // Vérifier la taille de l'écran
     const checkMobile = () => {
       setIsMobile(window.innerWidth <= 768);
     };
@@ -100,7 +98,6 @@ export default function Home() {
 
     window.addEventListener('scroll', handleScroll);
     
-    // Auto-slide pour les produits
     let slideInterval;
     if (produits.length > 0) {
       slideInterval = setInterval(() => {
@@ -115,7 +112,6 @@ export default function Home() {
     };
   }, [produits.length]);
 
-  // Fonction pour ouvrir le modal de commande
   const openOrderModal = (produit) => {
     setSelectedProduct(produit);
     setQuantity(1);
@@ -127,14 +123,12 @@ export default function Home() {
     });
     setFormErrors({});
     
-    // Extraire le prix numérique du produit
     const prixNumérique = extractPrix(produit.prix);
     setTotalPrice(prixNumérique * 1);
     
     setIsModalOpen(true);
   };
 
-  // Fonction pour fermer le modal
   const closeOrderModal = () => {
     setIsModalOpen(false);
     setSelectedProduct(null);
@@ -149,41 +143,30 @@ export default function Home() {
     setFormErrors({});
   };
 
-  // Fonction pour extraire le prix numérique de n'importe quel type
   const extractPrix = (prix) => {
     if (!prix && prix !== 0) return 0;
     
-    // Si c'est déjà un nombre, le retourner directement
     if (typeof prix === 'number') {
       return prix;
     }
     
-    // Si c'est une string, essayer de la parser
     if (typeof prix === 'string') {
-      // Retirer tous les caractères non numériques sauf les points et virgules
       const numericString = prix.replace(/[^\d.,]/g, '');
-      
-      // Remplacer la virgule par un point si nécessaire
       const normalizedString = numericString.replace(',', '.');
-      
-      // Convertir en nombre
       const prixNumérique = parseFloat(normalizedString);
       
       return isNaN(prixNumérique) ? 0 : prixNumérique;
     }
     
-    // Pour tout autre type, essayer de le convertir en nombre
     const prixNumérique = parseFloat(prix);
     return isNaN(prixNumérique) ? 0 : prixNumérique;
   };
 
-  // Fonction pour formater le prix
   const formatPrix = (prix) => {
     const prixNumérique = extractPrix(prix);
     return new Intl.NumberFormat('fr-FR').format(prixNumérique);
   };
 
-  // Fonction pour mettre à jour la quantité
   const updateQuantity = (newQuantity) => {
     if (newQuantity < 1) newQuantity = 1;
     if (selectedProduct && newQuantity > selectedProduct.stock) {
@@ -198,24 +181,20 @@ export default function Home() {
     }
   };
 
-  // Fonction pour incrémenter la quantité
   const incrementQuantity = () => {
     updateQuantity(quantity + 1);
   };
 
-  // Fonction pour décrémenter la quantité
   const decrementQuantity = () => {
     updateQuantity(quantity - 1);
   };
 
-  // Gestion des changements du formulaire client
   const handleClientInfoChange = (field, value) => {
     setClientInfo(prev => ({
       ...prev,
       [field]: value
     }));
     
-    // Effacer l'erreur du champ si il y en a une
     if (formErrors[field]) {
       setFormErrors(prev => ({
         ...prev,
@@ -224,7 +203,6 @@ export default function Home() {
     }
   };
 
-  // Validation du formulaire client
   const validateClientForm = () => {
     const errors = {};
     
@@ -246,7 +224,6 @@ export default function Home() {
     return Object.keys(errors).length === 0;
   };
 
-  // Navigation dans le modal - CORRIGÉ
   const nextStep = () => {
     if (modalStep < 3) {
       setModalStep(modalStep + 1);
@@ -259,31 +236,86 @@ export default function Home() {
     }
   };
 
-  // Fonction pour valider la commande
-  const handleOrderSubmit = () => {
+  const handleOrderSubmit = async () => {
     if (!selectedProduct || !validateClientForm()) return;
     
-    // Ici, vous pouvez envoyer la commande au backend
-    const commandeData = {
-      produitId: selectedProduct.id,
-      produitNom: selectedProduct.nom,
-      quantité: quantity,
-      prixUnitaire: extractPrix(selectedProduct.prix),
-      prixTotal: totalPrice,
-      clientInfo: clientInfo,
-      date: new Date().toISOString()
-    };
-    
-    console.log('Commande passée:', commandeData);
-    
-    // Afficher un message de confirmation
-    alert(`Commande de ${quantity} ${selectedProduct.nom} pour un total de ${formatPrix(totalPrice)} CFA a été enregistrée pour ${clientInfo.nomComplet} !`);
-    
-    // Fermer le modal
-    closeOrderModal();
+    try {
+      const commandeData = {
+        idProduit: selectedProduct.id,
+        quantite: quantity,
+        nomComplet: clientInfo.nomComplet,
+        telephone: clientInfo.telephone,
+        adresse: clientInfo.adresse
+      };
+      
+      const response = await fetch(
+        'https://bouctou-poulet-back.onrender.com/bouctou_poulet/client/commander-produit-client',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(commandeData)
+        }
+      );
+      
+      if (response.ok) {
+        // Fermer le modal IMMÉDIATEMENT
+        closeOrderModal();
+        
+        // Puis afficher SweetAlert
+        await Swal.fire({
+          title: 'Commande réussie !',
+          text: `Commande de ${quantity} ${selectedProduct.nom} pour un total de ${formatPrix(totalPrice)} CFA a été enregistrée pour ${clientInfo.nomComplet} !`,
+          icon: 'success',
+          confirmButtonText: 'OK',
+          confirmButtonColor: '#2E7D32',
+          background: '#ffffff',
+          customClass: {
+            popup: 'custom-swal-popup',
+            title: 'custom-swal-title',
+            confirmButton: 'custom-swal-confirm-button'
+          },
+          allowOutsideClick: false,
+          allowEscapeKey: false
+        });
+      } else {
+        await Swal.fire({
+          title: 'Erreur',
+          text: 'Une erreur est survenue lors de la commande. Veuillez réessayer.',
+          icon: 'error',
+          confirmButtonText: 'OK',
+          confirmButtonColor: '#d32f2f',
+          background: '#ffffff',
+          customClass: {
+            popup: 'custom-swal-popup',
+            title: 'custom-swal-title',
+            confirmButton: 'custom-swal-confirm-button'
+          },
+          allowOutsideClick: false,
+          allowEscapeKey: false
+        });
+      }
+      
+    } catch (error) {
+      await Swal.fire({
+        title: 'Erreur de connexion',
+        text: 'Problème de connexion réseau. Vérifiez votre connexion internet.',
+        icon: 'error',
+        confirmButtonText: 'OK',
+        confirmButtonColor: '#d32f2f',
+        background: '#ffffff',
+        customClass: {
+          popup: 'custom-swal-popup',
+          title: 'custom-swal-title',
+          confirmButton: 'custom-swal-confirm-button'
+        },
+        allowOutsideClick: false,
+        allowEscapeKey: false
+      });
+    }
   };
 
-  // Fonction pour faire défiler les produits manuellement
   const scrollProducts = (direction) => {
     if (productsContainerRef.current) {
       const container = productsContainerRef.current;
@@ -313,7 +345,6 @@ export default function Home() {
     }
   };
 
-  // Fonction pour obtenir l'icône selon le type de produit
   const getProductIcon = (type) => {
     switch(type?.toUpperCase()) {
       case 'POULET': return '🐔';
@@ -323,7 +354,6 @@ export default function Home() {
     }
   };
 
-  // Fonction pour obtenir le label du type
   const getProductTypeLabel = (type) => {
     switch(type?.toUpperCase()) {
       case 'POULET': return 'Poulet';
@@ -333,12 +363,10 @@ export default function Home() {
     }
   };
 
-  // Fonction pour naviguer vers un slide spécifique
   const goToSlide = (index) => {
     setCurrentSlide(index);
   };
 
-  // Contenu de l'étape 1 : Informations produit
   const renderStep1 = () => (
     <div style={styles.modalContent}>
       <div style={styles.productPreview}>
@@ -393,7 +421,6 @@ export default function Home() {
     </div>
   );
 
-  // Contenu de l'étape 2 : Quantité et calcul
   const renderStep2 = () => (
     <div style={styles.modalContent}>
       <div style={styles.stepHeader}>
@@ -465,7 +492,6 @@ export default function Home() {
     </div>
   );
 
-  // Contenu de l'étape 3 : Informations client
   const renderStep3 = () => (
     <div style={styles.modalContent}>
       <div style={styles.stepHeader}>
@@ -881,7 +907,6 @@ export default function Home() {
           </div>
         ) : (
           <>
-            {/* Conteneur de produits avec défilement horizontal */}
             <div style={{
               ...styles.productsCarouselContainer,
               position: 'relative',
@@ -987,7 +1012,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Indicateurs de pagination pour mobile */}
             {isMobile && produits.length > 0 && (
               <div style={styles.carouselIndicators}>
                 {produits.slice(0, Math.min(5, produits.length)).map((_, index) => (
@@ -1153,7 +1177,6 @@ export default function Home() {
               </button>
             </div>
             
-            {/* Contenu conditionnel selon l'étape */}
             {modalStep === 1 && renderStep1()}
             {modalStep === 2 && renderStep2()}
             {modalStep === 3 && renderStep3()}

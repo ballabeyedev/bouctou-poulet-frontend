@@ -5,12 +5,15 @@ import {
   LayoutDashboard,
   Users,
   Package,
+  ShoppingCart,
   LogOut,
   X,
   Loader2,
   AlertCircle,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  User,
+  Package as PackageIcon
 } from 'lucide-react';
 import logo from '../../assets/images/logo.jpg';
 import Swal from 'sweetalert2';
@@ -19,23 +22,37 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [activeMenu, setActiveMenu] = useState('Accueil');
-  const API_URL = 'https://bouctou-poulet-back-mali.onrender.com';
+  const API_URL = 'https://bouctou-poulet-back.onrender.com';
   const [produits, setProduits] = useState([]);
+  const [commandes, setCommandes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingCommandes, setLoadingCommandes] = useState(false);
   const [error, setError] = useState(null);
+  const [errorCommandes, setErrorCommandes] = useState(null);
   
-  // États pour la pagination
+  // États pour la pagination produits
   const [currentPage, setCurrentPage] = useState(1);
   const [productsPerPage] = useState(5);
   
-  // États pour les modales
+  // États pour la pagination commandes
+  const [currentPageCommandes, setCurrentPageCommandes] = useState(1);
+  const [commandesPerPage] = useState(5);
+  
+  // États pour les modales produits
   const [showAjoutModal, setShowAjoutModal] = useState(false);
   const [showModifModal, setShowModifModal] = useState(false);
   const [selectedProduit, setSelectedProduit] = useState(null);
   const [loadingSubmit, setLoadingSubmit] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   
-  // États pour le formulaire
+  // États pour les modales commandes
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [showProductModal, setShowProductModal] = useState(false);
+  const [selectedCommande, setSelectedCommande] = useState(null);
+  const [selectedUserInfo, setSelectedUserInfo] = useState(null);
+  const [selectedProductInfo, setSelectedProductInfo] = useState(null);
+  
+  // États pour le formulaire produit
   const [formData, setFormData] = useState({
     nom: '',
     type: '',
@@ -93,7 +110,6 @@ export default function Dashboard() {
 
       const data = await response.json();
       
-      // Vérifier si data est un tableau
       if (Array.isArray(data)) {
         setProduits(data);
       } else if (data && Array.isArray(data.produits)) {
@@ -113,9 +129,58 @@ export default function Dashboard() {
     }
   };
 
+  // Récupération des commandes
+  const fetchCommandes = async () => {
+    try {
+      setLoadingCommandes(true);
+      setErrorCommandes(null);
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        navigate('/bouctou_poulet/login');
+        return;
+      }
+
+      const response = await fetch('https://bouctou-poulet-back.onrender.com/bouctou_poulet/client/liste-commendes-client', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.clear();
+          navigate('/bouctou_poulet/login');
+          return;
+        }
+        throw new Error(`Erreur ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.success && Array.isArray(data.data)) {
+        setCommandes(data.data);
+      } else {
+        setCommandes([]);
+        console.warn('Format de données commandes non reconnu:', data);
+      }
+    } catch (error) {
+      console.error('Erreur lors de la récupération des commandes:', error);
+      setErrorCommandes('Impossible de charger les commandes. Veuillez réessayer.');
+      setCommandes([]);
+    } finally {
+      setLoadingCommandes(false);
+    }
+  };
+
   useEffect(() => {
-    fetchProduits();
-  }, []);
+    if (activeMenu === 'Produits') {
+      fetchProduits();
+    } else if (activeMenu === 'Commandes') {
+      fetchCommandes();
+    }
+  }, [activeMenu]);
 
   // Calcul des produits pour la pagination
   const indexOfLastProduct = currentPage * productsPerPage;
@@ -123,15 +188,36 @@ export default function Dashboard() {
   const currentProducts = produits.slice(indexOfFirstProduct, indexOfLastProduct);
   const totalPages = Math.ceil(produits.length / productsPerPage);
 
+  // Calcul des commandes pour la pagination
+  const indexOfLastCommande = currentPageCommandes * commandesPerPage;
+  const indexOfFirstCommande = indexOfLastCommande - commandesPerPage;
+  const currentCommandes = commandes.slice(indexOfFirstCommande, indexOfLastCommande);
+  const totalPagesCommandes = Math.ceil(commandes.length / commandesPerPage);
+
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
+  const paginateCommandes = (pageNumber) => setCurrentPageCommandes(pageNumber);
+  
   const nextPage = () => {
     if (currentPage < totalPages) {
       setCurrentPage(currentPage + 1);
     }
   };
+  
   const prevPage = () => {
     if (currentPage > 1) {
       setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const nextPageCommandes = () => {
+    if (currentPageCommandes < totalPagesCommandes) {
+      setCurrentPageCommandes(currentPageCommandes + 1);
+    }
+  };
+  
+  const prevPageCommandes = () => {
+    if (currentPageCommandes > 1) {
+      setCurrentPageCommandes(currentPageCommandes - 1);
     }
   };
 
@@ -141,20 +227,20 @@ export default function Dashboard() {
     
     if (typeLower === 'oeuf') {
       return {
-        background: '#fffaf0', // Blanc cassé/ivoire
-        color: '#8B4513', // Marron pour le texte
+        background: '#fffaf0',
+        color: '#8B4513',
         fontWeight: 'bold'
       };
     } else if (typeLower === 'poussin') {
       return {
-        background: '#fffacd', // Jaune clair
-        color: '#DAA520', // Or pour le texte
+        background: '#fffacd',
+        color: '#DAA520',
         fontWeight: 'bold'
       };
     } else if (typeLower === 'poulet') {
       return {
-        background: '#e8f5e9', // Vert clair
-        color: '#2E7D32', // Vert foncé pour le texte
+        background: '#e8f5e9',
+        color: '#2E7D32',
         fontWeight: 'bold'
       };
     } else {
@@ -164,6 +250,50 @@ export default function Dashboard() {
         fontWeight: 'normal'
       };
     }
+  };
+
+  // Fonction pour obtenir la couleur en fonction du statut
+  const getStatusColor = (statut) => {
+    const statutLower = statut?.toLowerCase();
+    
+    if (statutLower === 'livré' || statutLower === 'livre') {
+      return {
+        background: '#e8f5e9',
+        color: '#2E7D32',
+        fontWeight: 'bold'
+      };
+    } else if (statutLower === 'en_attente' || statutLower === 'en attente') {
+      return {
+        background: '#fff3e0',
+        color: '#ef6c00',
+        fontWeight: 'bold'
+      };
+    } else if (statutLower === 'annulé' || statutLower === 'annule') {
+      return {
+        background: '#ffebee',
+        color: '#c62828',
+        fontWeight: 'bold'
+      };
+    } else {
+      return {
+        background: '#f5f5f5',
+        color: '#333',
+        fontWeight: 'normal'
+      };
+    }
+  };
+
+  // Formatage de la date
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   // Fonction de déconnexion avec SweetAlert2
@@ -183,7 +313,6 @@ export default function Dashboard() {
       localStorage.clear();
       navigate('/bouctou_poulet/login');
       
-      // Afficher un message de confirmation
       Swal.fire({
         title: 'Déconnecté!',
         text: 'Vous avez été déconnecté avec succès.',
@@ -194,7 +323,7 @@ export default function Dashboard() {
     }
   };
 
-  // Gestion des formulaires
+  // Gestion des formulaires produits
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -206,7 +335,6 @@ export default function Dashboard() {
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Vérifier la taille du fichier (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         setMessage({ 
           type: 'error', 
@@ -223,7 +351,7 @@ export default function Dashboard() {
     }
   };
 
-  // Ouvrir modal modification
+  // Ouvrir modal modification produit
   const handleEditClick = (produit) => {
     console.log('Produit à modifier:', produit);
     setSelectedProduit(produit);
@@ -239,7 +367,7 @@ export default function Dashboard() {
     setMessage({ type: '', text: '' });
   };
 
-  // Ouvrir modal ajout
+  // Ouvrir modal ajout produit
   const handleAddClick = () => {
     setFormData({
       nom: '',
@@ -253,11 +381,34 @@ export default function Dashboard() {
     setMessage({ type: '', text: '' });
   };
 
+  // Ouvrir modal utilisateur
+  const handleUserClick = (commande) => {
+    setSelectedCommande(commande);
+    setSelectedUserInfo({
+      nomComplet: commande.nomComplet,
+      telephone: commande.telephone,
+      adresse: commande.adresse
+    });
+    setShowUserModal(true);
+  };
+
+  // Ouvrir modal produit
+  const handleProductClick = (commande) => {
+    setSelectedCommande(commande);
+    setSelectedProductInfo(commande.produit);
+    setShowProductModal(true);
+  };
+
   // Fermer modales
   const closeModals = () => {
     setShowAjoutModal(false);
     setShowModifModal(false);
+    setShowUserModal(false);
+    setShowProductModal(false);
     setSelectedProduit(null);
+    setSelectedCommande(null);
+    setSelectedUserInfo(null);
+    setSelectedProductInfo(null);
     setFormData({
       nom: '',
       type: '',
@@ -280,24 +431,21 @@ export default function Dashboard() {
     return true;
   };
 
-  // Soumettre ajout
+  // Soumettre ajout produit
   const handleAjoutSubmit = async (e) => {
     e.preventDefault();
     setLoadingSubmit(true);
     setMessage({ type: '', text: '' });
 
     try {
-      // Vérifier le token
       if (!await verifyToken()) return;
 
       const token = localStorage.getItem('token');
       
-      // Validation des données
       if (!formData.nom || !formData.type || !formData.prix || !formData.stock) {
         throw new Error('Veuillez remplir tous les champs obligatoires');
       }
 
-      // Créer FormData
       const formDataToSend = new FormData();
       formDataToSend.append('nom', formData.nom.trim());
       formDataToSend.append('type', formData.type.toUpperCase());
@@ -327,10 +475,8 @@ export default function Dashboard() {
       }
 
       if (response.ok) {
-        // Fermer immédiatement le modal
         closeModals();
         
-        // Afficher SweetAlert2 de succès
         Swal.fire({
           title: 'Succès!',
           text: data.message || 'Produit ajouté avec succès!',
@@ -339,7 +485,6 @@ export default function Dashboard() {
           confirmButtonText: 'OK'
         });
         
-        // Rafraîchir les produits
         fetchProduits();
       } else {
         if (response.status === 401) {
@@ -367,7 +512,7 @@ export default function Dashboard() {
     }
   };
 
-  // Soumettre modification
+  // Soumettre modification produit
   const handleModifSubmit = async (e) => {
     e.preventDefault();
     setLoadingSubmit(true);
@@ -416,10 +561,8 @@ export default function Dashboard() {
       }
 
       if (response.ok) {
-        // Fermer immédiatement le modal
         closeModals();
         
-        // Afficher SweetAlert2 de succès
         Swal.fire({
           title: 'Succès!',
           text: data.message || 'Produit modifié avec succès!',
@@ -428,7 +571,6 @@ export default function Dashboard() {
           confirmButtonText: 'OK'
         });
         
-        // Rafraîchir les produits
         fetchProduits();
       } else {
         if (response.status === 401) {
@@ -487,7 +629,6 @@ export default function Dashboard() {
         });
 
         if (response.ok) {
-          // Afficher SweetAlert2 de succès
           Swal.fire({
             title: 'Supprimé!',
             text: 'Le produit a été supprimé avec succès.',
@@ -496,7 +637,6 @@ export default function Dashboard() {
             confirmButtonText: 'OK'
           });
           
-          // Rafraîchir les produits
           fetchProduits();
         } else {
           const data = await response.json();
@@ -517,7 +657,8 @@ export default function Dashboard() {
 
   const menuItems = [
     { label: 'Accueil', icon: LayoutDashboard },
-    { label: 'Produits', icon: Package }
+    { label: 'Produits', icon: Package },
+    { label: 'Commandes', icon: ShoppingCart }
   ];
 
   return (
@@ -578,7 +719,7 @@ export default function Dashboard() {
             <div style={styles.cards}>
               <StatCard title="Utilisateurs" value="128" icon={<Users size={28} />} />
               <StatCard title="Produits" value={produits.length.toString()} icon={<Package size={28} />} />
-              <StatCard title="Commandes" value="312" icon={<LayoutDashboard size={28} />} />
+              <StatCard title="Commandes" value={commandes.length.toString()} icon={<ShoppingCart size={28} />} />
             </div>
           )}
 
@@ -735,10 +876,149 @@ export default function Dashboard() {
               )}
             </div>
           )}
+
+          {activeMenu === 'Commandes' && (
+            <div style={styles.contentBox}>
+              <div style={styles.produitsHeader}>
+                <h2>Liste des commandes</h2>
+              </div>
+              
+              {loadingCommandes ? (
+                <div style={styles.loading}>
+                  <div style={styles.spinner}></div>
+                  <p>Chargement des commandes...</p>
+                </div>
+              ) : errorCommandes ? (
+                <div style={styles.error}>
+                  <p style={{ color: '#d32f2f' }}>{errorCommandes}</p>
+                  <button 
+                    style={styles.retryButton}
+                    onClick={() => fetchCommandes()}
+                  >
+                    Réessayer
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div style={styles.tableContainer}>
+                    {commandes.length === 0 ? (
+                      <div style={styles.emptyState}>
+                        <ShoppingCart size={48} color="#bdbdbd" />
+                        <p>Aucune commande disponible</p>
+                      </div>
+                    ) : (
+                      <>
+                        <table style={styles.table}>
+                          <thead style={styles.tableHead}>
+                            <tr>
+                              <th style={styles.th}>Client</th>
+                              <th style={styles.th}>Quantité</th>
+                              <th style={styles.th}>Total</th>
+                              <th style={styles.th}>Statut</th>
+                              <th style={styles.th}>Date Commande</th>
+                              <th style={styles.th}>Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {currentCommandes.map((commande) => {
+                              const statusStyle = getStatusColor(commande.statut);
+                              return (
+                                <tr key={commande.id} style={styles.tableRow}>
+                                  <td style={styles.td}>{commande.nomComplet || 'N/A'}</td>
+                                  <td style={styles.td}>{commande.quantite || 'N/A'}</td>
+                                  <td style={styles.td}>
+                                    {commande.total ? `${parseFloat(commande.total).toLocaleString('fr-FR')} FCFA` : 'N/A'}
+                                  </td>
+                                  <td style={styles.td}>
+                                    <span style={{
+                                      ...styles.stockBadge,
+                                      ...statusStyle
+                                    }}>
+                                      {commande.statut ? commande.statut.replace('_', ' ') : 'N/A'}
+                                    </span>
+                                  </td>
+                                  <td style={styles.td}>{formatDate(commande.dateCommande)}</td>
+                                  <td style={styles.td}>
+                                    <div style={styles.actionButtons}>
+                                      <button 
+                                        style={styles.userButton}
+                                        onClick={() => handleUserClick(commande)}
+                                      >
+                                        <User size={14} /> Client
+                                      </button>
+                                      <button 
+                                        style={styles.productButton}
+                                        onClick={() => handleProductClick(commande)}
+                                      >
+                                        <PackageIcon size={14} /> Produit
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                        
+                        {/* Pagination */}
+                        {commandes.length > commandesPerPage && (
+                          <div style={styles.pagination}>
+                            <div style={styles.paginationInfo}>
+                              Affichage de {indexOfFirstCommande + 1} à {Math.min(indexOfLastCommande, commandes.length)} sur {commandes.length} commandes
+                            </div>
+                            <div style={styles.paginationControls}>
+                              <button
+                                onClick={prevPageCommandes}
+                                disabled={currentPageCommandes === 1}
+                                style={{
+                                  ...styles.paginationButton,
+                                  opacity: currentPageCommandes === 1 ? 0.5 : 1,
+                                  cursor: currentPageCommandes === 1 ? 'not-allowed' : 'pointer'
+                                }}
+                              >
+                                <ChevronLeft size={20} />
+                              </button>
+                              
+                              {[...Array(totalPagesCommandes)].map((_, index) => (
+                                <button
+                                  key={index + 1}
+                                  onClick={() => paginateCommandes(index + 1)}
+                                  style={{
+                                    ...styles.paginationButton,
+                                    background: currentPageCommandes === index + 1 ? '#2E7D32' : 'transparent',
+                                    color: currentPageCommandes === index + 1 ? 'white' : '#333',
+                                    fontWeight: currentPageCommandes === index + 1 ? 'bold' : 'normal'
+                                  }}
+                                >
+                                  {index + 1}
+                                </button>
+                              ))}
+                              
+                              <button
+                                onClick={nextPageCommandes}
+                                disabled={currentPageCommandes === totalPagesCommandes}
+                                style={{
+                                  ...styles.paginationButton,
+                                  opacity: currentPageCommandes === totalPagesCommandes ? 0.5 : 1,
+                                  cursor: currentPageCommandes === totalPagesCommandes ? 'not-allowed' : 'pointer'
+                                }}
+                              >
+                                <ChevronRight size={20} />
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </main>
       </div>
 
-      {/* MODALE D'AJOUT */}
+      {/* MODALE D'AJOUT PRODUIT */}
       {showAjoutModal && (
         <div style={styles.modalOverlay}>
           <div style={styles.modal}>
@@ -874,7 +1154,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* MODALE DE MODIFICATION */}
+      {/* MODALE DE MODIFICATION PRODUIT */}
       {showModifModal && selectedProduit && (
         <div style={styles.modalOverlay}>
           <div style={styles.modal}>
@@ -1002,6 +1282,88 @@ export default function Dashboard() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODALE UTILISATEUR */}
+      {showUserModal && selectedUserInfo && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.smallModal}>
+            <div style={styles.modalHeader}>
+              <h3 style={styles.modalTitle}>Informations du client</h3>
+              <button style={styles.closeButton} onClick={closeModals}>
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div style={styles.infoContainer}>
+              <div style={styles.infoRow}>
+                <span style={styles.infoLabel}>Nom complet:</span>
+                <span style={styles.infoValue}>{selectedUserInfo.nomComplet || 'N/A'}</span>
+              </div>
+              <div style={styles.infoRow}>
+                <span style={styles.infoLabel}>Téléphone:</span>
+                <span style={styles.infoValue}>{selectedUserInfo.telephone || 'N/A'}</span>
+              </div>
+              <div style={styles.infoRow}>
+                <span style={styles.infoLabel}>Adresse:</span>
+                <span style={styles.infoValue}>{selectedUserInfo.adresse || 'N/A'}</span>
+              </div>
+            </div>
+
+            <div style={styles.modalFooter}>
+              <button
+                type="button"
+                style={styles.cancelButton}
+                onClick={closeModals}
+              >
+                Fermer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODALE PRODUIT */}
+      {showProductModal && selectedProductInfo && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.smallModal}>
+            <div style={styles.modalHeader}>
+              <h3 style={styles.modalTitle}>Informations du produit</h3>
+              <button style={styles.closeButton} onClick={closeModals}>
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div style={styles.infoContainer}>
+              <div style={styles.infoRow}>
+                <span style={styles.infoLabel}>Nom:</span>
+                <span style={styles.infoValue}>{selectedProductInfo.nom || 'N/A'}</span>
+              </div>
+              <div style={styles.infoRow}>
+                <span style={styles.infoLabel}>Prix:</span>
+                <span style={styles.infoValue}>{selectedProductInfo.prix ? `${selectedProductInfo.prix} FCFA` : 'N/A'}</span>
+              </div>
+              <div style={styles.infoRow}>
+                <span style={styles.infoLabel}>Type:</span>
+                <span style={styles.infoValue}>{selectedProductInfo.type || 'N/A'}</span>
+              </div>
+              <div style={styles.infoRow}>
+                <span style={styles.infoLabel}>Description:</span>
+                <span style={styles.infoValue}>{selectedProductInfo.description || 'N/A'}</span>
+              </div>
+            </div>
+
+            <div style={styles.modalFooter}>
+              <button
+                type="button"
+                style={styles.cancelButton}
+                onClick={closeModals}
+              >
+                Fermer
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1267,6 +1629,40 @@ const styles = {
     }
   },
 
+  userButton: {
+    background: '#1976d2',
+    color: 'white',
+    border: 'none',
+    padding: '6px 12px',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontSize: '12px',
+    transition: 'background 0.3s',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '5px',
+    ':hover': {
+      background: '#1565c0'
+    }
+  },
+
+  productButton: {
+    background: '#2E7D32',
+    color: 'white',
+    border: 'none',
+    padding: '6px 12px',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontSize: '12px',
+    transition: 'background 0.3s',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '5px',
+    ':hover': {
+      background: '#1B5E20'
+    }
+  },
+
   // Pagination styles
   pagination: {
     display: 'flex',
@@ -1370,6 +1766,16 @@ const styles = {
     boxShadow: '0 10px 40px rgba(0,0,0,0.2)'
   },
 
+  smallModal: {
+    background: 'white',
+    borderRadius: '12px',
+    width: '100%',
+    maxWidth: '400px',
+    maxHeight: '90vh',
+    overflowY: 'auto',
+    boxShadow: '0 10px 40px rgba(0,0,0,0.2)'
+  },
+
   modalHeader: {
     display: 'flex',
     justifyContent: 'space-between',
@@ -1447,6 +1853,28 @@ const styles = {
     fontSize: '14px',
     display: 'flex',
     alignItems: 'center'
+  },
+
+  infoContainer: {
+    padding: '24px'
+  },
+
+  infoRow: {
+    display: 'flex',
+    marginBottom: '16px',
+    alignItems: 'flex-start'
+  },
+
+  infoLabel: {
+    fontWeight: '600',
+    color: '#333',
+    width: '120px',
+    flexShrink: 0
+  },
+
+  infoValue: {
+    color: '#666',
+    flex: 1
   },
 
   modalFooter: {

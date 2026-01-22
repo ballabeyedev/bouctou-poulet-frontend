@@ -13,7 +13,8 @@ export default function Home() {
   const [loadingProduits, setLoadingProduits] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
-  
+  const API_URL = import.meta.env.VITE_API_URL;
+
   // États pour le modal de commande
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -32,6 +33,45 @@ export default function Home() {
   const aboutRef = useRef(null);
   const contactRef = useRef(null);
   const productsContainerRef = useRef(null);
+
+  // Fonction pour obtenir l'URL de l'image du produit
+  const getProductImage = (imagePath) => {
+    // Si pas d'image, retourner l'image par défaut
+    if (!imagePath) return defaultProductImage;
+    
+    // Construire l'URL complète
+    const baseUrl = 'https://bouctou-poulet-back.onrender.com';
+    return imagePath.startsWith('http') ? imagePath : `${baseUrl}${imagePath}`;
+  };
+
+  // Composant SafeImage pour gérer les erreurs de chargement
+  const SafeImage = ({ src, alt, defaultSrc, style, className }) => {
+    const [imgSrc, setImgSrc] = useState(src || defaultSrc);
+
+    useEffect(() => {
+      setImgSrc(src || defaultSrc);
+    }, [src, defaultSrc]);
+
+    const handleError = () => {
+      if (imgSrc !== defaultSrc) {
+        setImgSrc(defaultSrc);
+      }
+    };
+
+    return (
+      <img
+        src={imgSrc}
+        alt={alt}
+        style={style}
+        className={className}
+        onError={handleError}
+        onLoad={(e) => {
+          // Image chargée avec succès
+          e.target.style.opacity = 1;
+        }}
+      />
+    );
+  };
 
   useEffect(() => {
     const fetchProduits = async () => {
@@ -56,6 +96,7 @@ export default function Home() {
           setProduits([]);
         }
       } catch (error) {
+        console.error('Erreur lors du chargement des produits:', error);
         setProduits([]);
       } finally {
         setLoadingProduits(false);
@@ -371,9 +412,10 @@ export default function Home() {
     <div style={styles.modalContent}>
       <div style={styles.productPreview}>
         <div style={styles.productImageModal}>
-          <img 
-            src={defaultProductImage} 
-            alt={selectedProduct.nom} 
+          <SafeImage
+            src={getProductImage(selectedProduct.image)}
+            alt={selectedProduct.nom}
+            defaultSrc={defaultProductImage}
             style={styles.modalImage}
           />
           <div style={styles.productCategoryModal}>
@@ -956,18 +998,17 @@ export default function Home() {
                       onMouseLeave={() => setHoveredProduct(null)}
                     >
                       <div style={styles.productImageContainer}>
-                        <div
-                          style={{
-                            ...styles.productImage,
-                            backgroundImage: `url(${defaultProductImage})`
-                          }}
-                        >
-                          <div style={styles.productCategory}>
-                            <span style={styles.categoryIcon}>
-                              {getProductIcon(produit.type)}
-                            </span>
-                            <span>{getProductTypeLabel(produit.type)}</span>
-                          </div>
+                        <SafeImage
+                          src={getProductImage(produit.image)}
+                          alt={produit.nom}
+                          defaultSrc={defaultProductImage}
+                          style={styles.productImage}
+                        />
+                        <div style={styles.productCategory}>
+                          <span style={styles.categoryIcon}>
+                            {getProductIcon(produit.type)}
+                          </span>
+                          <span>{getProductTypeLabel(produit.type)}</span>
                         </div>
                       </div>
 
@@ -1662,8 +1703,7 @@ const styles = {
   productImage: {
     width: '100%',
     height: '100%',
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
+    objectFit: 'cover',
     transition: 'transform 0.5s ease',
   },
 

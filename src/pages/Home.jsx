@@ -36,12 +36,28 @@ export default function Home() {
 
   // Fonction pour obtenir l'URL de l'image du produit
   const getProductImage = (imagePath) => {
+    console.log('Image path reçu:', imagePath); // Debug
     // Si pas d'image, retourner l'image par défaut
-    if (!imagePath) return defaultProductImage;
+    if (!imagePath || imagePath === 'null' || imagePath === 'undefined') {
+      console.log('Retourne image par défaut');
+      return defaultProductImage;
+    }
     
     // Construire l'URL complète
     const baseUrl = 'https://bouctou-poulet-back.onrender.com';
-    return imagePath.startsWith('http') ? imagePath : `${baseUrl}${imagePath}`;
+    
+    // Si le chemin commence déjà par http, le retourner tel quel
+    if (imagePath.startsWith('http')) {
+      return imagePath;
+    }
+    
+    // Si le chemin commence par /uploads, ajouter le baseUrl
+    if (imagePath.startsWith('/uploads')) {
+      return `${baseUrl}${imagePath}`;
+    }
+    
+    // Si c'est juste un nom de fichier, construire le chemin complet
+    return `${baseUrl}/uploads/${imagePath}`;
   };
 
   // Composant SafeImage pour gérer les erreurs de chargement
@@ -53,6 +69,7 @@ export default function Home() {
     }, [src, defaultSrc]);
 
     const handleError = () => {
+      console.log(`Erreur de chargement de l'image: ${src}`);
       if (imgSrc !== defaultSrc) {
         setImgSrc(defaultSrc);
       }
@@ -65,9 +82,8 @@ export default function Home() {
         style={style}
         className={className}
         onError={handleError}
-        onLoad={(e) => {
-          // Image chargée avec succès
-          e.target.style.opacity = 1;
+        onLoad={() => {
+          console.log(`Image chargée avec succès: ${src}`);
         }}
       />
     );
@@ -76,30 +92,42 @@ export default function Home() {
   useEffect(() => {
     const fetchProduits = async () => {
       try {
+        console.log('Début du chargement des produits...');
         const response = await fetch(
           'https://bouctou-poulet-back.onrender.com/bouctou_poulet/client/liste-produit-client'
         );
+        
+        console.log('Réponse reçue:', response.status);
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         
         const data = await response.json();
+        console.log('Données reçues:', data);
+        
+        let produitsData = [];
         
         if (Array.isArray(data)) {
-          setProduits(data);
+          produitsData = data;
         } else if (data.produits && Array.isArray(data.produits)) {
-          setProduits(data.produits);
+          produitsData = data.produits;
         } else if (data.data && Array.isArray(data.data)) {
-          setProduits(data.data);
+          produitsData = data.data;
         } else {
-          setProduits([]);
+          produitsData = [];
         }
+        
+        console.log('Produits extraits:', produitsData);
+        console.log('Nombre de produits:', produitsData.length);
+        
+        setProduits(produitsData);
       } catch (error) {
         console.error('Erreur lors du chargement des produits:', error);
         setProduits([]);
       } finally {
         setLoadingProduits(false);
+        console.log('Chargement terminé');
       }
     };
 
@@ -154,6 +182,7 @@ export default function Home() {
   }, [produits.length]);
 
   const openOrderModal = (produit) => {
+    console.log('Ouverture du modal pour le produit:', produit);
     setSelectedProduct(produit);
     setQuantity(1);
     setModalStep(1);
@@ -289,6 +318,8 @@ export default function Home() {
         adresse: clientInfo.adresse
       };
       
+      console.log('Envoi de la commande:', commandeData);
+      
       const response = await fetch(
         'https://bouctou-poulet-back.onrender.com/bouctou_poulet/client/commander-produit-client',
         {
@@ -321,6 +352,8 @@ export default function Home() {
           allowEscapeKey: false
         });
       } else {
+        const errorText = await response.text();
+        console.error('Erreur serveur:', errorText);
         await Swal.fire({
           title: 'Erreur',
           text: 'Une erreur est survenue lors de la commande. Veuillez réessayer.',
@@ -339,6 +372,7 @@ export default function Home() {
       }
       
     } catch (error) {
+      console.error('Erreur réseau:', error);
       await Swal.fire({
         title: 'Erreur de connexion',
         text: 'Problème de connexion réseau. Vérifiez votre connexion internet.',
@@ -977,17 +1011,18 @@ export default function Home() {
                   ...styles.productsCarousel,
                   overflowX: 'auto',
                   scrollbarWidth: 'none',
-                  msOverflowStyle: 'none'
+                  msOverflowStyle: 'none',
+                  padding: '10px 0'
                 }}
               >
                 <div style={{
                   display: 'flex',
                   gap: isMobile ? '15px' : '25px',
-                  padding: '10px 0'
+                  padding: '10px'
                 }}>
                   {produits.map((produit, index) => (
                     <div
-                      key={produit.id || index}
+                      key={produit._id || produit.id || index}
                       style={{
                         ...styles.productCard,
                         minWidth: isMobile ? '280px' : '320px',
@@ -1002,7 +1037,10 @@ export default function Home() {
                           src={getProductImage(produit.image)}
                           alt={produit.nom}
                           defaultSrc={defaultProductImage}
-                          style={styles.productImage}
+                          style={{
+                            ...styles.productImage,
+                            backgroundColor: '#f5f5f5'
+                          }}
                         />
                         <div style={styles.productCategory}>
                           <span style={styles.categoryIcon}>
@@ -1031,7 +1069,7 @@ export default function Home() {
                           
                           {produit.prix && (
                             <div style={styles.priceBadge}>
-                              <span style={styles.priceValue}>{produit.prix}</span>
+                              <span style={styles.priceValue}>{formatPrix(produit.prix)}</span>
                               <span style={styles.priceUnit}>CFA</span>
                             </div>
                           )}
@@ -1039,11 +1077,16 @@ export default function Home() {
                         
                         <div style={styles.productFooter}>
                           <button 
-                            style={styles.productButton} 
+                            style={{
+                              ...styles.productButton,
+                              backgroundColor: (produit.stock || 0) > 0 ? '#2E7D32' : '#ccc',
+                              cursor: (produit.stock || 0) > 0 ? 'pointer' : 'not-allowed'
+                            }} 
                             onClick={() => openOrderModal(produit)}
+                            disabled={(produit.stock || 0) <= 0}
                           >
                             <span style={styles.buttonIcon}>🛒</span>
-                            <span>Commander</span>
+                            <span>{(produit.stock || 0) > 0 ? 'Commander' : 'Indisponible'}</span>
                           </button>
                         </div>
                       </div>
@@ -1642,45 +1685,52 @@ const styles = {
   loadingContainer: {
     textAlign: 'center',
     padding: '40px',
+    backgroundColor: '#f9f9f9',
+    borderRadius: '10px',
+    margin: '20px 0',
   },
 
   spinner: {
-    width: '40px',
-    height: '40px',
-    border: '3px solid #f4fbf6',
-    borderTop: '3px solid #2E7D32',
+    width: '50px',
+    height: '50px',
+    border: '4px solid #f3f3f3',
+    borderTop: '4px solid #2E7D32',
     borderRadius: '50%',
     margin: '0 auto 15px',
     animation: 'spin 1s linear infinite',
   },
 
   loadingText: {
-    fontSize: '0.9rem',
+    fontSize: '1rem',
     color: '#2E7D32',
     fontWeight: '600',
   },
 
   emptyContainer: {
     textAlign: 'center',
-    padding: '30px 20px',
-    background: '#f4fbf6',
+    padding: '60px 20px',
+    background: '#f9fdf9',
     borderRadius: '12px',
+    margin: '20px 0',
+    border: '1px solid #e0f2e1',
   },
 
   emptyIcon: {
-    fontSize: '2.5rem',
-    marginBottom: '12px',
+    fontSize: '3rem',
+    marginBottom: '15px',
     display: 'block',
+    color: '#2E7D32',
   },
 
   emptyTitle: {
-    fontSize: '1.3rem',
+    fontSize: '1.5rem',
     color: '#2E7D32',
-    margin: '0 0 8px 0',
+    margin: '0 0 10px 0',
+    fontWeight: '700',
   },
 
   emptyText: {
-    fontSize: '0.9rem',
+    fontSize: '1rem',
     color: '#666',
     margin: 0,
   },
@@ -1692,12 +1742,15 @@ const styles = {
     boxShadow: '0 8px 25px rgba(0, 0, 0, 0.08)',
     transition: 'all 0.4s ease',
     border: '1px solid rgba(46, 125, 50, 0.1)',
+    display: 'flex',
+    flexDirection: 'column',
   },
 
   productImageContainer: {
-    height: '180px',
+    height: '200px',
     position: 'relative',
     overflow: 'hidden',
+    backgroundColor: '#f5f5f5',
   },
 
   productImage: {
@@ -1705,13 +1758,14 @@ const styles = {
     height: '100%',
     objectFit: 'cover',
     transition: 'transform 0.5s ease',
+    backgroundColor: '#f5f5f5',
   },
 
   productCategory: {
     position: 'absolute',
     top: '12px',
     left: '12px',
-    background: '#FBC02D',
+    background: 'rgba(251, 192, 45, 0.9)',
     color: '#4E342E',
     padding: '5px 10px',
     borderRadius: '40px',
@@ -1721,6 +1775,7 @@ const styles = {
     alignItems: 'center',
     gap: '5px',
     backdropFilter: 'blur(10px)',
+    zIndex: 2,
   },
 
   categoryIcon: {
@@ -1729,6 +1784,9 @@ const styles = {
 
   productInfo: {
     padding: '15px',
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
   },
 
   productName: {
@@ -1744,7 +1802,7 @@ const styles = {
     margin: '0 0 12px 0',
     fontSize: '0.85rem',
     lineHeight: 1.5,
-    minHeight: '40px',
+    flex: 1,
   },
 
   productMeta: {
@@ -1797,16 +1855,17 @@ const styles = {
   productFooter: {
     display: 'flex',
     justifyContent: 'center',
+    marginTop: 'auto',
   },
 
   productButton: {
     background: 'linear-gradient(135deg, #2E7D32 0%, #66BB6A 100%)',
     color: '#fff',
     border: 'none',
-    padding: '10px 20px',
+    padding: '12px 20px',
     borderRadius: '8px',
     fontWeight: '700',
-    fontSize: '0.85rem',
+    fontSize: '0.9rem',
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
@@ -1940,6 +1999,7 @@ const styles = {
     borderRadius: '10px',
     overflow: 'hidden',
     flexShrink: 0,
+    backgroundColor: '#f5f5f5',
   },
 
   modalImage: {
@@ -2528,6 +2588,16 @@ if (styleSheet) {
         opacity: 1;
         transform: translateY(0) scale(1);
       }
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-20px); }
     }
   `, styleSheet.cssRules.length);
 }

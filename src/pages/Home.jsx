@@ -58,33 +58,33 @@ export default function Home() {
     const descLower = description.toLowerCase();
     
     // Vérification pour les œufs
-    if (descLower.includes('oeuf rouge') || descLower.includes('oeufs rouges')) {
+    if (descLower.includes('oeuf rouge') || descLower.includes('oeufs rouges') || descLower.includes('Oeufs rouge')) {
       return Oueuf_rouge;
     }
     
-    if (descLower.includes('oeuf blanc') || descLower.includes('oeufs blancs')) {
+    if (descLower.includes('oeuf blanc') || descLower.includes('oeufs blancs') || descLower.includes('Oeufs blanc')) {
       return Oueuf_blanc;
     }
     
     // Vérification pour les poulets
-    if (descLower.includes('poulet goliath') || descLower.includes('poulets goliaths')) {
+    if (descLower.includes('poulet goliath') || descLower.includes('poulets goliaths') || descLower.includes('Poulets Goliath')) {
       return Poulet_Goliath;
     }
     
-    if (descLower.includes('viande poulet')) {
+    if (descLower.includes('viande poulet') || descLower.includes('Viande poulet') || descLower.includes('Viande Poulet')) {
       return viande_poulet;
     }
     
     // Vérification pour les poussins
-    if (descLower.includes('poussin un jour') || descLower.includes('poussins un jour')) {
+    if (descLower.includes('Poussin un jour') || descLower.includes('Poussins un jour') || descLower.includes('Poussins 1 jour')) {
       return Poussin_jour;
     }
     
-    if (descLower.includes('poussin un mois') || descLower.includes('poussins un mois')) {
+    if (descLower.includes('Poussin un mois') || descLower.includes('Poussins un mois') || descLower.includes('Poussins 1 mois')) {
       return Poussin_moi;
     }
     
-    if (descLower.includes('poussin un semaine') || descLower.includes('poussins un semaine')) {
+    if (descLower.includes('Poussin un semaine') || descLower.includes('Poussins un semaine') || descLower.includes('Poussins 1 semaine') ) {
       return Poussin_semaine;
     }
     

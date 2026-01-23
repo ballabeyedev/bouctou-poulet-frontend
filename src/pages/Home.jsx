@@ -22,6 +22,7 @@ export default function Home() {
   const [produits, setProduits] = useState([]);
   const [loadingProduits, setLoadingProduits] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  const [isTablet, setIsTablet] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
 
   // États pour le modal de commande
@@ -42,6 +43,13 @@ export default function Home() {
   const aboutRef = useRef(null);
   const contactRef = useRef(null);
   const productsContainerRef = useRef(null);
+
+  // Fonction pour détecter la taille d'écran
+  const checkScreenSize = () => {
+    const width = window.innerWidth;
+    setIsMobile(width <= 768);
+    setIsTablet(width > 768 && width <= 1024);
+  };
 
   // Fonction pour obtenir l'image du produit selon sa description
   const getProductImage = (description) => {
@@ -81,12 +89,13 @@ export default function Home() {
     }
     
     // Fallback basé sur le type si la description n'est pas spécifique
-    // (gardé pour compatibilité)
     return defaultProductImage;
   };
 
   // Fonction utilitaire pour obtenir l'image avec fallback au type si nécessaire
   const getProductImageWithFallback = (produit) => {
+    if (!produit) return defaultProductImage;
+    
     const imageByDesc = getProductImage(produit.description);
     
     // Si on a trouvé une image spécifique par description, on l'utilise
@@ -108,35 +117,6 @@ export default function Home() {
       default:
         return defaultProductImage;
     }
-  };
-
-  // Composant SafeImage pour gérer les erreurs de chargement
-  const SafeImage = ({ src, alt, defaultSrc, style, className }) => {
-    const [imgSrc, setImgSrc] = useState(src || defaultSrc);
-
-    useEffect(() => {
-      setImgSrc(src || defaultSrc);
-    }, [src, defaultSrc]);
-
-    const handleError = () => {
-      if (imgSrc !== defaultSrc) {
-        setImgSrc(defaultSrc);
-      }
-    };
-
-    return (
-      <img
-        src={imgSrc}
-        alt={alt}
-        style={style}
-        className={className}
-        onError={handleError}
-        onLoad={(e) => {
-          // Image chargée avec succès
-          e.target.style.opacity = 1;
-        }}
-      />
-    );
   };
 
   useEffect(() => {
@@ -175,12 +155,8 @@ export default function Home() {
   useEffect(() => {
     setIsVisible(true);
     
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth <= 768);
-    };
-    
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
     
     const handleScroll = () => {
       const sections = [
@@ -214,7 +190,7 @@ export default function Home() {
     
     return () => {
       window.removeEventListener('scroll', handleScroll);
-      window.removeEventListener('resize', checkMobile);
+      window.removeEventListener('resize', checkScreenSize);
       if (slideInterval) clearInterval(slideInterval);
     };
   }, [produits.length]);
@@ -426,7 +402,7 @@ export default function Home() {
   const scrollProducts = (direction) => {
     if (productsContainerRef.current) {
       const container = productsContainerRef.current;
-      const scrollAmount = 300;
+      const scrollAmount = isMobile ? 280 : 320;
       
       if (direction === 'left') {
         container.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
@@ -453,7 +429,8 @@ export default function Home() {
   };
 
   const getProductIcon = (type) => {
-    switch(type?.toUpperCase()) {
+    if (!type) return '🐔';
+    switch(type.toUpperCase()) {
       case 'POULET': return '🐔';
       case 'OEUF': return '🥚';
       case 'POUSSIN': return '🐣';
@@ -462,11 +439,12 @@ export default function Home() {
   };
 
   const getProductTypeLabel = (type) => {
-    switch(type?.toUpperCase()) {
+    if (!type) return 'Produit';
+    switch(type.toUpperCase()) {
       case 'POULET': return 'Poulet';
       case 'OEUF': return 'Œuf';
       case 'POUSSIN': return 'Poussin';
-      default: return type || 'Produit';
+      default: return type;
     }
   };
 
@@ -474,15 +452,35 @@ export default function Home() {
     setCurrentSlide(index);
   };
 
+  const getResponsivePadding = () => {
+    if (isMobile) return '0 15px';
+    if (isTablet) return '0 30px';
+    return '0 40px';
+  };
+
+  const getResponsiveHeroPadding = () => {
+    if (isMobile) return '80px 15px 40px';
+    if (isTablet) return '100px 30px 50px';
+    return '120px 40px 60px';
+  };
+
+  const getResponsiveSectionPadding = () => {
+    if (isMobile) return '40px 15px';
+    if (isTablet) return '60px 30px';
+    return '80px 40px';
+  };
+
   const renderStep1 = () => (
     <div style={styles.modalContent}>
       <div style={styles.productPreview}>
         <div style={styles.productImageModal}>
-          <SafeImage
-            src={selectedProduct ? getProductImageWithFallback(selectedProduct) : defaultProductImage}
+          <img
+            src={getProductImageWithFallback(selectedProduct)}
             alt={selectedProduct.nom}
-            defaultSrc={defaultProductImage}
             style={styles.modalImage}
+            onError={(e) => {
+              e.target.src = defaultProductImage;
+            }}
           />
           <div style={styles.productCategoryModal}>
             <span style={styles.categoryIcon}>
@@ -707,7 +705,7 @@ export default function Home() {
       <nav style={styles.navbar}>
         <div style={{
           ...styles.navContent,
-          padding: isMobile ? '0 20px' : '0 40px'
+          padding: getResponsivePadding()
         }}>
           <div style={styles.logoContainer}>
             <img src={logo} alt="Bouctou Poulet" style={styles.logoImage} />
@@ -804,7 +802,7 @@ export default function Home() {
           <Link to="/bouctou_poulet/login">
             <button style={{
               ...styles.navButton,
-              padding: isMobile ? '10px 20px' : '14px 28px',
+              padding: isMobile ? '10px 15px' : isTablet ? '12px 20px' : '14px 28px',
               fontSize: isMobile ? '0.85rem' : '0.95rem'
             }}>
               <span>{isMobile ? 'Connexion' : 'Se Connecter'}</span>
@@ -817,8 +815,8 @@ export default function Home() {
       {/* Hero Section */}
       <section ref={heroRef} style={{
         ...styles.hero,
-        padding: isMobile ? '80px 20px 40px' : '120px 40px 60px',
-        minHeight: isMobile ? '70vh' : '90vh'
+        padding: getResponsiveHeroPadding(),
+        minHeight: isMobile ? '70vh' : isTablet ? '80vh' : '90vh'
       }}>
         <div style={styles.heroOverlay}></div>
         <div style={{
@@ -833,7 +831,7 @@ export default function Home() {
           
           <h1 style={{
             ...styles.heroTitle,
-            fontSize: isMobile ? '2rem' : '3.5rem'
+            fontSize: isMobile ? '1.8rem' : isTablet ? '2.5rem' : '3.5rem'
           }}>
             La qualité
             <span style={styles.heroHighlight}> malienne</span>
@@ -843,9 +841,9 @@ export default function Home() {
           
           <p style={{
             ...styles.heroSubtitle,
-            fontSize: isMobile ? '1rem' : '1.2rem',
+            fontSize: isMobile ? '0.9rem' : isTablet ? '1.1rem' : '1.2rem',
             padding: isMobile ? '0 10px' : '0',
-            marginBottom: isMobile ? '30px' : '40px'
+            marginBottom: isMobile ? '25px' : isTablet ? '35px' : '40px'
           }}>
             Que vous soyez éleveur, revendeur, restaurant ou particulier, Bouctou Poulet vous accompagne avec des solutions adaptées au marché malien.
           </p>
@@ -853,14 +851,14 @@ export default function Home() {
           <div style={{
             ...styles.heroButtons,
             flexDirection: isMobile ? 'column' : 'row',
-            gap: isMobile ? '15px' : '20px',
-            marginBottom: isMobile ? '30px' : '40px'
+            gap: isMobile ? '12px' : '20px',
+            marginBottom: isMobile ? '25px' : isTablet ? '35px' : '40px'
           }}>
             <Link to="/bouctou_poulet/login">
               <button style={{
                 ...styles.primaryButton,
-                padding: isMobile ? '14px 25px' : '18px 35px',
-                fontSize: isMobile ? '0.9rem' : '1rem'
+                padding: isMobile ? '12px 20px' : isTablet ? '14px 25px' : '18px 35px',
+                fontSize: isMobile ? '0.85rem' : '0.95rem'
               }}>
                 <span>Accéder à mon compte</span>
                 <span style={styles.buttonArrow}>→</span>
@@ -869,8 +867,8 @@ export default function Home() {
             <button 
               style={{
                 ...styles.secondaryButton,
-                padding: isMobile ? '14px 25px' : '18px 35px',
-                fontSize: isMobile ? '0.9rem' : '1rem'
+                padding: isMobile ? '12px 20px' : isTablet ? '14px 25px' : '18px 35px',
+                fontSize: isMobile ? '0.85rem' : '0.95rem'
               }}
               onClick={() => scrollToSection('produits')}
             >
@@ -881,7 +879,7 @@ export default function Home() {
           <div style={{
             ...styles.heroFeatures,
             flexDirection: isMobile ? 'column' : 'row',
-            gap: isMobile ? '10px' : '20px'
+            gap: isMobile ? '8px' : '20px'
           }}>
             <div style={styles.feature}>
               <span style={styles.featureIcon}>🛡️</span>
@@ -910,12 +908,12 @@ export default function Home() {
       {/* À propos Section */}
       <section ref={aboutRef} style={{
         ...styles.aboutSection,
-        padding: isMobile ? '40px 20px' : '80px 40px'
+        padding: getResponsiveSectionPadding()
       }}>
         <div style={{
           ...styles.aboutContainer,
           gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
-          gap: isMobile ? '30px' : '60px'
+          gap: isMobile ? '25px' : isTablet ? '40px' : '60px'
         }}>
           <div style={styles.aboutImage}>
             <div style={styles.imageWrapper}>
@@ -931,7 +929,7 @@ export default function Home() {
             <div style={styles.aboutHeader}>
               <h2 style={{
                 ...styles.aboutTitle,
-                fontSize: isMobile ? '1.8rem' : '2.5rem'
+                fontSize: isMobile ? '1.6rem' : isTablet ? '2rem' : '2.5rem'
               }}>
                 À Propos de Nous
               </h2>
@@ -939,7 +937,8 @@ export default function Home() {
             
             <p style={{
               ...styles.aboutDescription,
-              fontSize: isMobile ? '0.95rem' : '1rem'
+              fontSize: isMobile ? '0.9rem' : '1rem',
+              marginBottom: isMobile ? '20px' : '25px'
             }}>
               Bouctou Poulet est une plateforme moderne dédiée à l'élevage et à la commercialisation de poussins, d'œufs et de poulets au Mali. Nous connectons production locale et consommateurs grâce à une solution digitale simple, fiable et efficace.
               Notre mission est de valoriser l'élevage malien, garantir des produits de qualité et faciliter l'accès à des volailles saines, élevées dans le respect des normes d'hygiène et de bien-être animal.
@@ -948,7 +947,7 @@ export default function Home() {
             <div style={{
               ...styles.valuesGrid,
               gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)',
-              gap: isMobile ? '12px' : '15px'
+              gap: isMobile ? '10px' : '15px'
             }}>
               <div style={styles.valueCard}>
                 <div style={styles.valueIcon}>🌱</div>
@@ -981,22 +980,22 @@ export default function Home() {
       {/* Produits Section */}
       <section ref={produitsRef} style={{
         ...styles.section,
-        padding: isMobile ? '40px 20px' : '80px 40px'
+        padding: getResponsiveSectionPadding()
       }}>
         <div style={styles.sectionHeader}>
           <div style={styles.sectionTitleContainer}>
             <div style={styles.sectionIcon}>
-              <span style={{ fontSize: isMobile ? '22px' : '28px' }}>🛒</span>
+              <span style={{ fontSize: isMobile ? '20px' : isTablet ? '24px' : '28px' }}>🛒</span>
             </div>
             <h2 style={{
               ...styles.sectionTitle,
-              fontSize: isMobile ? '1.8rem' : '2.5rem'
+              fontSize: isMobile ? '1.6rem' : isTablet ? '2rem' : '2.5rem'
             }}>Nos Produits Phares</h2>
           </div>
           <p style={{
             ...styles.sectionSubtitle,
-            fontSize: isMobile ? '0.95rem' : '1.1rem',
-            marginBottom: isMobile ? '25px' : '40px'
+            fontSize: isMobile ? '0.9rem' : isTablet ? '1rem' : '1.1rem',
+            marginBottom: isMobile ? '25px' : isTablet ? '35px' : '40px'
           }}>
             Découvrez notre sélection de produits frais et de qualité supérieure
           </p>
@@ -1020,7 +1019,7 @@ export default function Home() {
               position: 'relative',
               marginBottom: isMobile ? '20px' : '30px'
             }}>
-              {produits.length > (isMobile ? 1 : 2) && (
+              {produits.length > (isMobile ? 1 : isTablet ? 2 : 3) && (
                 <>
                   <button 
                     onClick={() => scrollProducts('left')}
@@ -1048,7 +1047,7 @@ export default function Home() {
               >
                 <div style={{
                   display: 'flex',
-                  gap: isMobile ? '15px' : '25px',
+                  gap: isMobile ? '15px' : isTablet ? '20px' : '25px',
                   padding: '10px 0'
                 }}>
                   {produits.map((produit, index) => (
@@ -1056,19 +1055,21 @@ export default function Home() {
                       key={produit.id || index}
                       style={{
                         ...styles.productCard,
-                        minWidth: isMobile ? '280px' : '320px',
+                        minWidth: isMobile ? '280px' : isTablet ? '300px' : '320px',
                         flexShrink: 0,
                         transform: hoveredProduct === index ? 'translateY(-5px)' : 'translateY(0)'
                       }}
-                      onMouseEnter={() => setHoveredProduct(index)}
-                      onMouseLeave={() => setHoveredProduct(null)}
+                      onMouseEnter={() => !isMobile && setHoveredProduct(index)}
+                      onMouseLeave={() => !isMobile && setHoveredProduct(null)}
                     >
                       <div style={styles.productImageContainer}>
-                        <SafeImage
+                        <img
                           src={getProductImageWithFallback(produit)}
                           alt={produit.nom}
-                          defaultSrc={defaultProductImage}
                           style={styles.productImage}
+                          onError={(e) => {
+                            e.target.src = defaultProductImage;
+                          }}
                         />
                         <div style={styles.productCategory}>
                           <span style={styles.categoryIcon}>
@@ -1107,9 +1108,10 @@ export default function Home() {
                           <button 
                             style={styles.productButton} 
                             onClick={() => openOrderModal(produit)}
+                            disabled={(produit.stock || 0) <= 0}
                           >
                             <span style={styles.buttonIcon}>🛒</span>
-                            <span>Commander</span>
+                            <span>{(produit.stock || 0) > 0 ? 'Commander' : 'Rupture'}</span>
                           </button>
                         </div>
                       </div>
@@ -1124,7 +1126,13 @@ export default function Home() {
                 {produits.slice(0, Math.min(5, produits.length)).map((_, index) => (
                   <button
                     key={index}
-                    onClick={() => goToSlide(index)}
+                    onClick={() => {
+                      const container = productsContainerRef.current;
+                      if (container) {
+                        const scrollAmount = 280 * index;
+                        container.scrollTo({ left: scrollAmount, behavior: 'smooth' });
+                      }
+                    }}
                     style={{
                       ...styles.carouselIndicator,
                       backgroundColor: currentSlide === index ? '#2E7D32' : '#ccc'
@@ -1140,18 +1148,18 @@ export default function Home() {
       {/* Contact Section */}
       <section ref={contactRef} style={{
         ...styles.contactSection,
-        padding: isMobile ? '40px 20px' : '80px 40px'
+        padding: getResponsiveSectionPadding()
       }}>
         <div style={styles.contactContainer}>
           <div style={styles.contactHeader}>
             <h2 style={{
               ...styles.contactTitle,
-              fontSize: isMobile ? '1.8rem' : '2.5rem'
+              fontSize: isMobile ? '1.6rem' : isTablet ? '2rem' : '2.5rem'
             }}>Contactez-nous</h2>
             <p style={{
               ...styles.contactSubtitle,
-              fontSize: isMobile ? '0.95rem' : '1.1rem',
-              marginBottom: isMobile ? '25px' : '40px'
+              fontSize: isMobile ? '0.9rem' : isTablet ? '1rem' : '1.1rem',
+              marginBottom: isMobile ? '25px' : isTablet ? '35px' : '40px'
             }}>
               Nous sommes à votre écoute pour toutes vos questions
             </p>
@@ -1159,13 +1167,13 @@ export default function Home() {
           
           <div style={{
             ...styles.contactGrid,
-            gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
-            gap: isMobile ? '20px' : '40px'
+            gridTemplateColumns: isMobile ? '1fr' : isTablet ? '1fr' : '1fr 1fr',
+            gap: isMobile ? '20px' : isTablet ? '30px' : '40px'
           }}>
             <div style={styles.contactInfo}>
               <div style={styles.infoCard}>
                 <div style={styles.infoIcon}>
-                  <span style={{ fontSize: isMobile ? '18px' : '22px' }}>📧</span>
+                  <span style={{ fontSize: isMobile ? '16px' : isTablet ? '20px' : '22px' }}>📧</span>
                 </div>
                 <div>
                   <h4 style={styles.infoTitle}>Email</h4>
@@ -1175,7 +1183,7 @@ export default function Home() {
               
               <div style={styles.infoCard}>
                 <div style={styles.infoIcon}>
-                  <span style={{ fontSize: isMobile ? '18px' : '22px' }}>📱</span>
+                  <span style={{ fontSize: isMobile ? '16px' : isTablet ? '20px' : '22px' }}>📱</span>
                 </div>
                 <div>
                   <h4 style={styles.infoTitle}>Téléphone</h4>
@@ -1185,7 +1193,7 @@ export default function Home() {
               
               <div style={styles.infoCard}>
                 <div style={styles.infoIcon}>
-                  <span style={{ fontSize: isMobile ? '18px' : '22px' }}>📍</span>
+                  <span style={{ fontSize: isMobile ? '16px' : isTablet ? '20px' : '22px' }}>📍</span>
                 </div>
                 <div>
                   <h4 style={styles.infoTitle}>Adresse</h4>
@@ -1208,12 +1216,12 @@ export default function Home() {
       <footer style={styles.footer}>
         <div style={{
           ...styles.footerTop,
-          padding: isMobile ? '30px 20px' : '60px 40px'
+          padding: isMobile ? '30px 15px' : isTablet ? '40px 30px' : '60px 40px'
         }}>
           <div style={{
             ...styles.footerContainer,
             gridTemplateColumns: isMobile ? '1fr' : '1fr',
-            gap: isMobile ? '30px' : '40px'
+            gap: isMobile ? '25px' : isTablet ? '35px' : '40px'
           }}>
             <div style={styles.footerBrand}>
               <img src={logo} alt="Bouctou Poulet" style={styles.footerLogo} />
@@ -1243,13 +1251,13 @@ export default function Home() {
 
       {/* Modal de commande */}
       {isModalOpen && selectedProduct && (
-        <div style={styles.modalOverlay}>
+        <div style={styles.modalOverlay} onClick={closeOrderModal}>
           <div style={{
             ...styles.modal,
-            width: isMobile ? '95%' : '500px',
+            width: isMobile ? '95%' : isTablet ? '450px' : '500px',
             maxWidth: '500px',
             margin: isMobile ? '20px auto' : 'auto'
-          }}>
+          }} onClick={(e) => e.stopPropagation()}>
             <div style={styles.modalHeader}>
               <div style={styles.modalStepper}>
                 <div style={{
@@ -2580,20 +2588,3 @@ const styles = {
     transition: 'opacity 0.3s ease',
   },
 };
-
-// Ajout des animations CSS pour le modal
-const styleSheet = document.styleSheets[0];
-if (styleSheet) {
-  styleSheet.insertRule(`
-    @keyframes modalAppear {
-      from {
-        opacity: 0;
-        transform: translateY(-20px) scale(0.95);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-      }
-    }
-  `, styleSheet.cssRules.length);
-}

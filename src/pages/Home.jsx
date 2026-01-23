@@ -1777,11 +1777,8 @@ const styles = {
   productImage: {
     width: '100%',
     height: '100%',
-    objectFit: 'contain', 
+    objectFit: 'cover',
     transition: 'transform 0.5s ease',
-    backgroundColor: '#f8f9fa', 
-    objectPosition: 'center', // Centrer l'image
-    opacity: 0, // Commencer invisible
   },
 
   productCategory: {

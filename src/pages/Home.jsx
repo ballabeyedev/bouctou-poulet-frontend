@@ -34,41 +34,133 @@ export default function Home() {
   const contactRef = useRef(null);
   const productsContainerRef = useRef(null);
 
-  // Fonction pour obtenir l'URL de l'image du produit
+  // Fonction pour obtenir l'URL de l'image du produit avec débogage
   const getProductImage = (imagePath) => {
+    console.log('=== DEBUG Image Loading ===');
+    console.log('1. Image path reçu:', imagePath);
+    console.log('2. Type de imagePath:', typeof imagePath);
+    
     // Si pas d'image, retourner l'image par défaut
-    if (!imagePath) return defaultProductImage;
+    if (!imagePath) {
+      console.log('3. Pas d\'image, retour image par défaut');
+      return defaultProductImage;
+    }
     
     // Construire l'URL complète
     const baseUrl = 'https://bouctou-poulet-back.onrender.com';
-    return imagePath.startsWith('http') ? imagePath : `${baseUrl}${imagePath}`;
+    
+    // Log supplémentaire pour voir ce que contient imagePath
+    console.log('4. Base URL:', baseUrl);
+    console.log('5. ImagePath commence par /uploads ?', imagePath.startsWith('/uploads'));
+    console.log('6. ImagePath commence par uploads ?', imagePath.startsWith('uploads'));
+    console.log('7. ImagePath commence par http ?', imagePath.startsWith('http'));
+    
+    // Cas 1: Déjà une URL complète (commence par http)
+    if (imagePath.startsWith('http')) {
+      console.log('8. Cas URL complète, retour:', imagePath);
+      return imagePath;
+    }
+    
+    // Cas 2: Commence par uploads (sans slash)
+    if (imagePath.startsWith('uploads')) {
+      const url = `${baseUrl}/${imagePath}`;
+      console.log('9. Cas uploads sans slash, URL construite:', url);
+      return url;
+    }
+    
+    // Cas 3: Commence par /uploads (avec slash)
+    if (imagePath.startsWith('/uploads')) {
+      const url = `${baseUrl}${imagePath}`;
+      console.log('10. Cas /uploads avec slash, URL construite:', url);
+      return url;
+    }
+    
+    // Cas 4: Commence par ./uploads
+    if (imagePath.startsWith('./uploads')) {
+      const url = `${baseUrl}/${imagePath.substring(2)}`;
+      console.log('11. Cas ./uploads, URL construite:', url);
+      return url;
+    }
+    
+    // Cas par défaut: ajouter /uploads/
+    const url = `${baseUrl}/uploads/${imagePath}`;
+    console.log('12. Cas par défaut, URL construite:', url);
+    return url;
   };
 
-  // Composant SafeImage pour gérer les erreurs de chargement
+  // Composant SafeImage amélioré avec plus de logs
   const SafeImage = ({ src, alt, defaultSrc, style, className }) => {
     const [imgSrc, setImgSrc] = useState(src || defaultSrc);
+    const [loadError, setLoadError] = useState(false);
 
     useEffect(() => {
+      console.log('SafeImage - src changé:', src);
       setImgSrc(src || defaultSrc);
+      setLoadError(false);
     }, [src, defaultSrc]);
 
     const handleError = () => {
+      console.error(`SafeImage - Erreur de chargement pour: ${imgSrc}`);
+      console.error(`SafeImage - alt: ${alt}`);
+      setLoadError(true);
       if (imgSrc !== defaultSrc) {
+        console.log('SafeImage - Basculer vers image par défaut');
         setImgSrc(defaultSrc);
       }
     };
 
+    const handleLoad = (e) => {
+      console.log(`SafeImage - Image chargée avec succès: ${imgSrc}`);
+      e.target.style.opacity = 1;
+    };
+
     return (
-      <img
-        src={imgSrc}
-        alt={alt}
-        style={style}
-        className={className}
-        onError={handleError}
-        onLoad={(e) => {
-          // Image chargée avec succès
-          e.target.style.opacity = 1;
-        }}
+      <div style={{ position: 'relative' }}>
+        <img
+          src={imgSrc}
+          alt={alt}
+          style={style}
+          className={className}
+          onError={handleError}
+          onLoad={handleLoad}
+          crossOrigin="anonymous" // Important pour les images cross-origin
+        />
+        {loadError && (
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: 'rgba(0,0,0,0.1)',
+            color: '#999',
+            fontSize: '12px',
+          }}>
+            Erreur de chargement
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Fonction pour afficher l'image du produit avec logs
+  const renderProductImage = (produit) => {
+    const imageUrl = getProductImage(produit.image);
+    console.log(`Rendu produit ${produit.nom}:`, {
+      originalImage: produit.image,
+      finalUrl: imageUrl,
+      produitId: produit.id
+    });
+    
+    return (
+      <SafeImage
+        src={imageUrl}
+        alt={produit.nom}
+        defaultSrc={defaultProductImage}
+        style={styles.productImage}
       />
     );
   };
@@ -76,27 +168,55 @@ export default function Home() {
   useEffect(() => {
     const fetchProduits = async () => {
       try {
+        console.log('=== FETCHING PRODUITS ===');
         const response = await fetch(
           'https://bouctou-poulet-back.onrender.com/bouctou_poulet/client/liste-produit-client'
         );
+        
+        console.log('Réponse status:', response.status);
+        console.log('Réponse headers:', response.headers);
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         
         const data = await response.json();
+        console.log('Données brutes reçues:', data);
+        
+        let produitsArray = [];
         
         if (Array.isArray(data)) {
-          setProduits(data);
+          console.log('Données sont un array, premier produit:', data[0]);
+          produitsArray = data;
         } else if (data.produits && Array.isArray(data.produits)) {
-          setProduits(data.produits);
+          console.log('Données dans data.produits, premier produit:', data.produits[0]);
+          produitsArray = data.produits;
         } else if (data.data && Array.isArray(data.data)) {
-          setProduits(data.data);
+          console.log('Données dans data.data, premier produit:', data.data[0]);
+          produitsArray = data.data;
         } else {
-          setProduits([]);
+          console.log('Structure inconnue, tableau vide');
+          produitsArray = [];
         }
+        
+        // Log détaillé de chaque produit
+        console.log('=== DÉTAIL DES PRODUITS ===');
+        produitsArray.forEach((p, i) => {
+          console.log(`Produit ${i}:`, {
+            id: p.id,
+            nom: p.nom,
+            image: p.image,
+            type: p.type,
+            prix: p.prix,
+            stock: p.stock
+          });
+        });
+        
+        setProduits(produitsArray);
+        
       } catch (error) {
-        console.error('Erreur lors du chargement des produits:', error);
+        console.error('Erreur détaillée lors du chargement des produits:', error);
+        console.error('Stack trace:', error.stack);
         setProduits([]);
       } finally {
         setLoadingProduits(false);
@@ -154,6 +274,7 @@ export default function Home() {
   }, [produits.length]);
 
   const openOrderModal = (produit) => {
+    console.log('Ouverture modal pour produit:', produit);
     setSelectedProduct(produit);
     setQuantity(1);
     setModalStep(1);
@@ -171,6 +292,7 @@ export default function Home() {
   };
 
   const closeOrderModal = () => {
+    console.log('Fermeture modal');
     setIsModalOpen(false);
     setSelectedProduct(null);
     setQuantity(1);
@@ -266,19 +388,28 @@ export default function Home() {
   };
 
   const nextStep = () => {
+    console.log('Étape suivante, de', modalStep, 'à', modalStep + 1);
     if (modalStep < 3) {
       setModalStep(modalStep + 1);
     }
   };
 
   const prevStep = () => {
+    console.log('Étape précédente, de', modalStep, 'à', modalStep - 1);
     if (modalStep > 1) {
       setModalStep(modalStep - 1);
     }
   };
 
   const handleOrderSubmit = async () => {
-    if (!selectedProduct || !validateClientForm()) return;
+    console.log('Soumission commande pour produit:', selectedProduct);
+    console.log('Quantité:', quantity);
+    console.log('Info client:', clientInfo);
+    
+    if (!selectedProduct || !validateClientForm()) {
+      console.log('Validation échouée');
+      return;
+    }
     
     try {
       const commandeData = {
@@ -288,6 +419,8 @@ export default function Home() {
         telephone: clientInfo.telephone,
         adresse: clientInfo.adresse
       };
+      
+      console.log('Données de commande envoyées:', commandeData);
       
       const response = await fetch(
         'https://bouctou-poulet-back.onrender.com/bouctou_poulet/client/commander-produit-client',
@@ -299,6 +432,8 @@ export default function Home() {
           body: JSON.stringify(commandeData)
         }
       );
+      
+      console.log('Réponse de commande:', response.status);
       
       if (response.ok) {
         // Fermer le modal IMMÉDIATEMENT
@@ -321,6 +456,8 @@ export default function Home() {
           allowEscapeKey: false
         });
       } else {
+        const errorData = await response.text();
+        console.error('Erreur serveur:', errorData);
         await Swal.fire({
           title: 'Erreur',
           text: 'Une erreur est survenue lors de la commande. Veuillez réessayer.',
@@ -339,6 +476,7 @@ export default function Home() {
       }
       
     } catch (error) {
+      console.error('Erreur réseau:', error);
       await Swal.fire({
         title: 'Erreur de connexion',
         text: 'Problème de connexion réseau. Vérifiez votre connexion internet.',
@@ -371,6 +509,7 @@ export default function Home() {
   };
 
   const scrollToSection = (sectionId) => {
+    console.log('Scroll vers section:', sectionId);
     const sections = {
       accueil: heroRef,
       produits: produitsRef,
@@ -998,12 +1137,7 @@ export default function Home() {
                       onMouseLeave={() => setHoveredProduct(null)}
                     >
                       <div style={styles.productImageContainer}>
-                        <SafeImage
-                          src={getProductImage(produit.image)}
-                          alt={produit.nom}
-                          defaultSrc={defaultProductImage}
-                          style={styles.productImage}
-                        />
+                        {renderProductImage(produit)}
                         <div style={styles.productCategory}>
                           <span style={styles.categoryIcon}>
                             {getProductIcon(produit.type)}
